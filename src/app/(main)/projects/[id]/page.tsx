@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { DeleteProjectButton } from "../DeleteProjectButton";
 import { ArchiveProjectButton } from "../ArchiveProjectButton";
 import { DownloadQuoteButton } from "@/components/documents/DownloadQuoteButton";
-import { FileImage, Banknote, User, Phone, MapPin, Calendar, ArrowLeft, Plus, AlignLeft } from "lucide-react";
+import { FileImage, Banknote, User, Phone, MapPin, Calendar, ArrowLeft, Plus, AlignLeft, Receipt } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { ConvertToInvoiceButton, MarkAsPaidButton } from "@/components/documents/InvoiceActions";
 
 export default async function ProjectDetailsPage({
     params
@@ -56,6 +57,19 @@ export default async function ProjectDetailsPage({
         .eq('organization_id', orgId)
         .order('created_at', { ascending: false });
 
+    // Fetch document items for all devis/factures
+    const documentsList = documents as any[] || [];
+    const docIds = documentsList.map(d => d.id);
+    let allDocItems: any[] = [];
+    if (docIds.length > 0) {
+        const { data: items } = await (supabase
+            .from('document_items') as any)
+            .select('*')
+            .in('document_id', docIds)
+            .order('sort_order', { ascending: true });
+        allDocItems = items || [];
+    }
+
     // Fetch Captures (Images/Memos for Documents Tab)
     const { data: captures } = await supabase
         .from('captures')
@@ -63,11 +77,26 @@ export default async function ProjectDetailsPage({
         .eq('organization_id', orgId)
         .order('created_at', { ascending: false });
 
-    const documentsList = documents as any[] || [];
-
-    // For now we filter locally since captures might be bound to clients, not exclusively projects in the current DB schema. 
-    // Usually you'd store project_id on the capture table as well. We'll filter based on assumed relations or show all for the org demo.
     const projectImages = (captures as any[])?.filter(c => c.type === 'IMAGE') || [];
+
+    const getDocStatusBadge = (type: string, status: string) => {
+        if (type === 'ACHAT') return <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Dépense</Badge>;
+        switch (status) {
+            case 'EN_ATTENTE': return <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px]">En attente</Badge>;
+            case 'ACCEPTE': return <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 text-[10px]">Accepté</Badge>;
+            case 'PAYEE': return <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 text-[10px]">Payée</Badge>;
+            default: return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
+        }
+    };
+
+    const getDocTypeLabel = (type: string) => {
+        switch (type) {
+            case 'DEVIS': return 'Devis';
+            case 'FACTURE': return 'Facture';
+            case 'ACHAT': return 'Dépense';
+            default: return type;
+        }
+    };
 
     return (
         <div className="p-4 flex flex-col gap-6 min-h-screen bg-background pb-28">
@@ -160,8 +189,28 @@ export default async function ProjectDetailsPage({
                         </div>
                     ) : (
                         documentsList.map((doc) => {
+                            // Get line items for this document
+                            const docItems = allDocItems.filter(item => item.document_id === doc.id);
+
+                            // Build PDF data from document_items (or fallback to old JSON approach)
                             let pdfData = null;
-                            if (doc.type === 'DEVIS' && doc.url && doc.url.startsWith('[')) {
+                            if ((doc.type === 'DEVIS' || doc.type === 'FACTURE') && docItems.length > 0) {
+                                pdfData = {
+                                    organizationName: orgName,
+                                    clientName: clientName,
+                                    clientAddress: clientAddress,
+                                    projectTitle: projectData.title,
+                                    quoteDate: new Date(doc.created_at).toLocaleDateString('fr-FR'),
+                                    items: docItems.map((item: any) => ({
+                                        description: item.description,
+                                        quantity: item.quantity,
+                                        price: item.unit_price_ht,
+                                    })),
+                                    totalHT: doc.amount_ht || 0,
+                                    quoteId: doc.id.split('-')[0].toUpperCase()
+                                };
+                            } else if (doc.type === 'DEVIS' && doc.url && doc.url.startsWith('[')) {
+                                // Legacy fallback for old JSON-based devis
                                 try {
                                     const items = JSON.parse(doc.url);
                                     pdfData = {
@@ -174,19 +223,24 @@ export default async function ProjectDetailsPage({
                                         totalHT: doc.amount_ht || 0,
                                         quoteId: doc.id.split('-')[0].toUpperCase()
                                     };
-                                } catch (e) {
-                                    console.error("Failed parsing PDF logic", e);
-                                }
+                                } catch (e) { /* ignore */ }
                             }
+
+                            const isDevisAccepte = doc.type === 'DEVIS' && doc.status === 'ACCEPTE';
+                            const isFactureUnpaid = doc.type === 'FACTURE' && doc.status !== 'PAYEE';
 
                             return (
                                 <div key={doc.id} className="flex flex-col gap-3 p-4 bg-card rounded-xl border border-border shadow-sm">
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="font-bold">{doc.type === 'ACHAT' ? 'Dépense' : 'Devis / Facture'}</p>
-                                            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-0.5">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold">{getDocTypeLabel(doc.type)}</p>
+                                                {getDocStatusBadge(doc.type, doc.status)}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-1">
                                                 <Calendar className="w-3 h-3" />
-                                                {new Date(doc.created_at).toLocaleDateString()}
+                                                {new Date(doc.created_at).toLocaleDateString('fr-FR')}
+                                                {doc.reference_number && ` • ${doc.reference_number}`}
                                             </div>
                                         </div>
                                         <div className={`font-black text-lg ${doc.type === 'ACHAT' ? 'text-foreground' : 'text-success'}`}>
@@ -194,11 +248,23 @@ export default async function ProjectDetailsPage({
                                         </div>
                                     </div>
 
-                                    {pdfData && (
-                                        <div className="pt-2 border-t border-border/50 flex justify-end">
-                                            <DownloadQuoteButton pdfData={pdfData} filename={`Devis_${projectData.title.replace(/\s+/g, '_')}.pdf`} variant="outline" label="Générer PDF (Devis)" />
-                                        </div>
-                                    )}
+                                    {/* Action buttons */}
+                                    <div className="pt-2 border-t border-border/50 flex justify-end gap-2 flex-wrap">
+                                        {pdfData && (
+                                            <DownloadQuoteButton
+                                                pdfData={pdfData}
+                                                filename={`${getDocTypeLabel(doc.type)}_${projectData.title.replace(/\s+/g, '_')}.pdf`}
+                                                variant="outline"
+                                                label={`PDF ${getDocTypeLabel(doc.type)}`}
+                                            />
+                                        )}
+                                        {isDevisAccepte && (
+                                            <ConvertToInvoiceButton devisId={doc.id} projectId={projectId} />
+                                        )}
+                                        {isFactureUnpaid && (
+                                            <MarkAsPaidButton documentId={doc.id} projectId={projectId} />
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })
