@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import Link from "next/link"
 
 export default function LoginPage() {
     const [email, setEmail] = useState("")
@@ -78,10 +79,16 @@ export default function LoginPage() {
                         </div>
                         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
                     </CardContent>
-                    <CardFooter className="pt-8">
+                    <CardFooter className="flex flex-col gap-4 pt-8">
                         <Button type="submit" className="w-full h-14 text-base font-bold shadow-md rounded-xl" disabled={loading}>
                             {loading ? "Chargement..." : "Se connecter"}
                         </Button>
+                        <p className="text-sm text-muted-foreground text-center">
+                            Pas encore de compte ?{" "}
+                            <Link href="/signup" className="text-primary font-semibold hover:underline">
+                                Créer un compte
+                            </Link>
+                        </p>
                     </CardFooter>
                 </form>
             </Card>
