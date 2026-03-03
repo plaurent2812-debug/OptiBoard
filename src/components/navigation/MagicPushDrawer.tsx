@@ -99,7 +99,8 @@ export function MagicPushDrawer({ children }: { children: React.ReactNode }) {
       });
 
       if (!triggerResponse.ok) {
-        throw new Error("Failed to start AI background job");
+        const errorData = await triggerResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to start AI background job");
       }
 
       alert("Fichier envoyé ! L'IA est en cours d'analyse en arrière-plan.");

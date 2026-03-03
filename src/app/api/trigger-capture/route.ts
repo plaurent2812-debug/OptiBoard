@@ -12,6 +12,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // Check if TRIGGER_SECRET_KEY is properly configured
+        const triggerKey = process.env.TRIGGER_SECRET_KEY;
+        if (!triggerKey || triggerKey.includes("placeholder")) {
+            console.error("TRIGGER_SECRET_KEY is not configured or is still a placeholder value");
+            return NextResponse.json(
+                { error: "Trigger.dev is not configured. Please set TRIGGER_SECRET_KEY in your environment variables." },
+                { status: 500 }
+            );
+        }
+
         const body = await req.json();
         const { storageUrl, type, organizationId, projectId, intent } = body;
 
@@ -52,6 +62,11 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
         const err = error as Error;
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        console.error("Trigger capture error:", err.message, err.stack);
+        return NextResponse.json(
+            { error: `Trigger.dev error: ${err.message}` },
+            { status: 500 }
+        );
     }
 }
+
