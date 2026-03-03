@@ -103,7 +103,16 @@ export function MagicPushDrawer({ children }: { children: React.ReactNode }) {
         throw new Error(errorData.error || "Failed to start AI background job");
       }
 
-      alert("Fichier envoyé ! L'IA est en cours d'analyse en arrière-plan.");
+      toast.success("Vocal envoyé ! L'IA crée votre chantier...", {
+        description: "Vous serez redirigé dans quelques secondes.",
+        duration: 5000,
+      });
+      setIsOpen(false);
+      // Redirect to projects after a short delay to let the Trigger.dev task complete
+      setTimeout(() => {
+        router.push("/projects");
+        router.refresh();
+      }, 4000);
     } catch (error: any) {
       console.warn('Error uploading:', typeof error === 'object' ? JSON.stringify(error, null, 2) : error, error?.message);
       toast.error("Erreur lors de l'upload", { description: error?.message || "Veuillez réessayer" });
