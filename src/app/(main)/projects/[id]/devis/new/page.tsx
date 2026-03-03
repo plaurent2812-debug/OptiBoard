@@ -50,6 +50,9 @@ export default function NewQuotePage(props: { params: Promise<{ id: string }> })
     };
 
     const totalHT = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const tvaRate = 20; // Will be configurable from org settings later
+    const totalTVA = totalHT * (tvaRate / 100);
+    const totalTTC = totalHT + totalTVA;
 
     const handleSubmit = async () => {
         if (items.some(i => !i.description.trim())) {
@@ -73,29 +76,45 @@ export default function NewQuotePage(props: { params: Promise<{ id: string }> })
             const orgId = await getCurrentOrgId();
             if (!orgId) throw new Error("Organisation introuvable");
 
-            // We store the line items in the `url` field as stringified JSON 
-            // as a temporary workaround until Phase 4 (PDF Generation module).
-            // This allows the Client Portal to safely read the content of the Devis.
-            const serializedItems = JSON.stringify(items);
-
-            const payload: any = {
+            // 1. Create the document record
+            const docPayload: any = {
                 organization_id: orgId,
                 project_id: projectId,
                 type: 'DEVIS',
                 status: 'EN_ATTENTE',
                 amount_ht: totalHT,
-                url: serializedItems
+                tva_rate: tvaRate,
+                amount_ttc: totalTTC,
+                url: '', // No longer used for line items
             };
 
-            const { error: insertError } = await supabase
+            const { data: newDoc, error: insertError } = await supabase
                 .from('documents')
                 // @ts-expect-error Supabase typing
-                .insert([payload]);
+                .insert([docPayload])
+                .select('id')
+                .single() as any;
 
             if (insertError) throw insertError;
 
+            // 2. Insert line items into document_items
+            const lineItems = items.map((item, index) => ({
+                document_id: newDoc.id,
+                description: item.description,
+                quantity: item.quantity,
+                unit_price_ht: item.price,
+                tva_rate: tvaRate,
+                sort_order: index,
+            }));
+
+            const { error: itemsError } = await (supabase
+                .from('document_items') as any)
+                .insert(lineItems);
+
+            if (itemsError) throw itemsError;
+
+            // 3. Update the project status and total
             const updatePayload: any = { status: 'DEVIS', total_ht: totalHT };
-            // Automatically update the project status to DEVIS
             await supabase
                 .from('projects')
                 // @ts-expect-error Supabase typing
@@ -194,10 +213,20 @@ export default function NewQuotePage(props: { params: Promise<{ id: string }> })
                 </Button>
 
                 {/* Total Area */}
-                <Card className="mt-4 border-none bg-primary text-primary-foreground shadow-md rounded-2xl">
-                    <CardContent className="p-5 flex justify-between items-center">
-                        <span className="font-semibold text-primary-foreground/80">Total HT</span>
-                        <span className="font-black text-3xl tracking-tight">{totalHT.toLocaleString('fr-FR')} €</span>
+                <Card className="mt-4 border-border shadow-sm rounded-2xl overflow-hidden">
+                    <CardContent className="p-0">
+                        <div className="p-4 flex justify-between items-center border-b border-border/50">
+                            <span className="text-sm font-semibold text-muted-foreground">Total HT</span>
+                            <span className="font-bold text-lg">{totalHT.toLocaleString('fr-FR')} €</span>
+                        </div>
+                        <div className="p-4 flex justify-between items-center border-b border-border/50 bg-muted/30">
+                            <span className="text-sm font-semibold text-muted-foreground">TVA ({tvaRate}%)</span>
+                            <span className="font-bold text-lg">{totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</span>
+                        </div>
+                        <div className="p-5 flex justify-between items-center bg-primary text-primary-foreground">
+                            <span className="font-semibold">Total TTC</span>
+                            <span className="font-black text-3xl tracking-tight">{totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</span>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
