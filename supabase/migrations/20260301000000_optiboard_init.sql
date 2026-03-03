@@ -10,7 +10,7 @@ create type capture_type as enum ('IMAGE', 'AUDIO');
 
 -- Create organizations table
 create table organizations (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     name text not null,
     subscription_plan subscription_plan_type not null default 'Sérénité',
     settings jsonb not null default '{}'::jsonb,
@@ -27,7 +27,7 @@ create table profiles (
 
 -- Create clients table
 create table clients (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     organization_id uuid not null references organizations(id) on delete cascade,
     name text not null,
     email text,
@@ -38,7 +38,7 @@ create table clients (
 
 -- Create projects table
 create table projects (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     organization_id uuid not null references organizations(id) on delete cascade,
     client_id uuid references clients(id) on delete set null,
     status project_status_type not null default 'DEVIS',
@@ -49,7 +49,7 @@ create table projects (
 
 -- Create documents table
 create table documents (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     project_id uuid not null references projects(id) on delete cascade,
     type document_type not null,
     url text not null,
@@ -60,7 +60,7 @@ create table documents (
 
 -- Create captures table
 create table captures (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     organization_id uuid not null references organizations(id) on delete cascade,
     type capture_type not null,
     storage_url text not null,

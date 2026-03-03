@@ -2,12 +2,7 @@ import { logger, task } from "@trigger.dev/sdk/v3";
 import OpenAI, { toFile } from "openai";
 import { createClient } from "@supabase/supabase-js";
 
-// Ensure environment variables are loaded
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
+// Clients will be initialized inside the task run function
 type VoiceMemoPayload = {
     captureId: string;
     storageUrl: string;
@@ -27,6 +22,11 @@ export const processVoiceMemoTask = task({
         logger.info("Processing voice memo with Whisper AI", { payload });
 
         try {
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+            const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+            const supabase = createClient(supabaseUrl, supabaseKey);
+
             // 1. Fetch the audio file from the storage URL
             const response = await fetch(payload.storageUrl);
             if (!response.ok) {

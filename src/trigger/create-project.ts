@@ -5,14 +5,6 @@ import { z } from "zod";
 import * as zodToJsonSchema from "zod-to-json-schema";
 import { toFile } from "openai";
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const ProjectSchema = z.object({
     client_name: z.string().describe("Le nom et/ou prénom du client. Inconnu si non spécifié."),
@@ -35,6 +27,15 @@ export const createProjectAudioTask = task({
     },
     run: async (payload: { storageUrl: string; organizationId: string }) => {
         try {
+            const openai = new OpenAI({
+                apiKey: process.env.OPENAI_API_KEY,
+            });
+
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+
             // 1. Download the audio file from Supabase Storage as a stream for OOM safety
             const response = await fetch(payload.storageUrl);
 

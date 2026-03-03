@@ -4,12 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 
-// Ensure environment variables are loaded
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
+// Clients will be initialized inside the task run function
 type ReceiptPayload = {
     captureId: string;
     storageUrl: string;
@@ -30,6 +25,11 @@ export const processReceiptTask = task({
         logger.info("Processing receipt with Vision AI", { payload });
 
         try {
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+            const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+            const supabase = createClient(supabaseUrl, supabaseKey);
+
             // Define expected structure
             const ReceiptSchema = z.object({
                 amount_ht: z.number().describe("Montant HT du reçu ou 0 si introuvable"),
