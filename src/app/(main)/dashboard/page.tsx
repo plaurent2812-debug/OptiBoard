@@ -3,6 +3,7 @@ import { getEffectiveOrgId } from "@/utils/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Clock, CheckCircle, FolderKanban, Users, FileText, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { GlobalSearch } from "@/components/navigation/GlobalSearch";
 
 export const dynamic = 'force-dynamic';
 
@@ -118,6 +119,9 @@ export default async function DashboardPage() {
           </div>
         </Link>
       </div>
+
+      {/* Global Search */}
+      <GlobalSearch />
 
       {/* Revenue Widget */}
       <Card className="bg-gradient-to-br from-primary to-primary/80 border-none shadow-lg relative overflow-hidden text-primary-foreground">

@@ -12,6 +12,7 @@ import { FileImage, Banknote, User, Phone, MapPin, Calendar, ArrowLeft, Plus, Al
 import Link from "next/link";
 import Image from "next/image";
 import { ConvertToInvoiceButton, MarkAsPaidButton } from "@/components/documents/InvoiceActions";
+import { ProjectNotesEditor } from "@/components/projects/ProjectNotesEditor";
 
 export default async function ProjectDetailsPage({
     params
@@ -156,6 +157,8 @@ export default async function ProjectDetailsPage({
                             </p>
                         </CardContent>
                     </Card>
+
+                    <ProjectNotesEditor projectId={projectId} initialNotes={projectData.notes || ""} />
                 </TabsContent>
 
                 <TabsContent value="treso" className="mt-6 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2">
